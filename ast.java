@@ -173,7 +173,7 @@ class StmtListNode extends ASTnode {
 
     public void nameAnalysis(SymTab symTab) {
         for (StmtNode node : myStmts) {
-            // node.nameAnalysis(symTab);
+            node.nameAnalysis(symTab);
         }
     }
 
@@ -291,9 +291,9 @@ class VarDeclNode extends DeclNode {
 
         if (!error) { // Put into hashtable (add to this scope)
             mySym = new Sym(myType.toString());
-            myId.setLink(mySym);
             try {
                 symTab.addDecl(myName, mySym);
+                myId.setLink(mySym);
             } catch (SymDuplicateException ex) {
                 System.err.println("Unexpected DuplicateSymException " +
                         " in VarDeclNode.nameAnalysis");
@@ -479,11 +479,16 @@ class StructNode extends TypeNode {
 // **********************************************************************
 
 abstract class StmtNode extends ASTnode {
+    abstract public void nameAnalysis(SymTab symTab);
 }
 
 class AssignStmtNode extends StmtNode {
     public AssignStmtNode(AssignExpNode assign) {
         myAssign = assign;
+    }
+
+    public void nameAnalysis(SymTab symTab) {
+        myAssign.nameAnalysis(symTab);
     }
 
     public void unparse(PrintWriter p, int indent) {
@@ -501,6 +506,10 @@ class PostIncStmtNode extends StmtNode {
         myExp = exp;
     }
 
+    public void nameAnalysis(SymTab symTab) {
+        myExp.nameAnalysis(symTab);
+    }
+
     public void unparse(PrintWriter p, int indent) {
         doIndent(p, indent);
         myExp.unparse(p, 0);
@@ -514,6 +523,10 @@ class PostIncStmtNode extends StmtNode {
 class PostDecStmtNode extends StmtNode {
     public PostDecStmtNode(ExpNode exp) {
         myExp = exp;
+    }
+
+    public void nameAnalysis(SymTab symTab) {
+        myExp.nameAnalysis(symTab);
     }
 
     public void unparse(PrintWriter p, int indent) {
@@ -531,6 +544,20 @@ class IfStmtNode extends StmtNode {
         myDeclList = dlist;
         myExp = exp;
         myStmtList = slist;
+    }
+
+    public void nameAnalysis(SymTab symTab) {
+        myExp.nameAnalysis(symTab);
+        symTab.addScope();
+        myDeclList.nameAnalysis(symTab);
+        myStmtList.nameAnalysis(symTab);
+        try {
+            symTab.removeScope();
+        } catch (SymTabEmptyException ex) {
+            System.err.println("Unexpected EmptySymTableException " +
+                    " in IfStmtNode.nameAnalysis");
+            System.exit(-1);
+        }
     }
 
     public void unparse(PrintWriter p, int indent) {
@@ -559,6 +586,10 @@ class IfElseStmtNode extends StmtNode {
         myThenStmtList = slist1;
         myElseDeclList = dlist2;
         myElseStmtList = slist2;
+    }
+
+    public void nameAnalysis(SymTab symTab) {
+        // myExp.nameAnalysis(symTab);
     }
 
     public void unparse(PrintWriter p, int indent) {
@@ -593,6 +624,10 @@ class WhileStmtNode extends StmtNode {
         myStmtList = slist;
     }
 
+    public void nameAnalysis(SymTab symTab) {
+        // myExp.nameAnalysis(symTab);
+    }
+
     public void unparse(PrintWriter p, int indent) {
         doIndent(p, indent);
         p.print("while (");
@@ -615,6 +650,10 @@ class ReadStmtNode extends StmtNode {
         myExp = e;
     }
 
+    public void nameAnalysis(SymTab symTab) {
+        myExp.nameAnalysis(symTab);
+    }
+
     public void unparse(PrintWriter p, int indent) {
         doIndent(p, indent);
         p.print("input -> ");
@@ -629,6 +668,10 @@ class ReadStmtNode extends StmtNode {
 class WriteStmtNode extends StmtNode {
     public WriteStmtNode(ExpNode exp) {
         myExp = exp;
+    }
+
+    public void nameAnalysis(SymTab symTab) {
+        myExp.nameAnalysis(symTab);
     }
 
     public void unparse(PrintWriter p, int indent) {
@@ -647,6 +690,10 @@ class CallStmtNode extends StmtNode {
         myCall = call;
     }
 
+    public void nameAnalysis(SymTab symTab) {
+        // myExp.nameAnalysis(symTab);
+    }
+
     public void unparse(PrintWriter p, int indent) {
         doIndent(p, indent);
         myCall.unparse(p, indent);
@@ -660,6 +707,10 @@ class CallStmtNode extends StmtNode {
 class ReturnStmtNode extends StmtNode {
     public ReturnStmtNode(ExpNode exp) {
         myExp = exp;
+    }
+
+    public void nameAnalysis(SymTab symTab) {
+        myExp.nameAnalysis(symTab);
     }
 
     public void unparse(PrintWriter p, int indent) {
@@ -681,6 +732,8 @@ class ReturnStmtNode extends StmtNode {
 // **********************************************************************
 
 abstract class ExpNode extends ASTnode {
+    public void nameAnalysis(SymTab symTab) {
+    }
 }
 
 class TrueNode extends ExpNode {
