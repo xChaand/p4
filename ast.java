@@ -106,24 +106,30 @@ import java.util.*;
 //   ASTnode class (base class for all other kinds of nodes)
 // **********************************************************************F
 
-abstract class ASTnode { 
+abstract class ASTnode {
     // every subclass must provide an unparse operation
     abstract public void unparse(PrintWriter p, int indent);
 
     // this method can be used by the unparse methods to do indenting
     protected void doIndent(PrintWriter p, int indent) {
-        for (int k=0; k<indent; k++) p.print(" ");
+        for (int k = 0; k < indent; k++)
+            p.print(" ");
     }
 }
 
 // **********************************************************************
-//   ProgramNode, DeclListNode, StmtListNode, ExpListNode, 
-//   FormalsListNode, FuncBodyNode
+// ProgramNode, DeclListNode, StmtListNode, ExpListNode,
+// FormalsListNode, FuncBodyNode
 // **********************************************************************
 
 class ProgramNode extends ASTnode {
     public ProgramNode(DeclListNode L) {
         myDeclList = L;
+    }
+
+    public void nameAnalysis() {
+        SymTab symTab = new SymTab();
+        myDeclList.nameAnalysis(symTab);
     }
 
     public void unparse(PrintWriter p, int indent) {
@@ -139,11 +145,16 @@ class DeclListNode extends ASTnode {
         myDecls = S;
     }
 
+    public void nameAnalysis(SymTab symTab) {
+        for (DeclNode node : myDecls)
+            node.nameAnalysis(symTab);
+    }
+
     public void unparse(PrintWriter p, int indent) {
-        Iterator it = myDecls.iterator();
+        Iterator<DeclNode> it = myDecls.iterator();
         try {
             while (it.hasNext()) {
-                ((DeclNode)it.next()).unparse(p, indent);
+                ((DeclNode) it.next()).unparse(p, indent);
             }
         } catch (NoSuchElementException ex) {
             System.err.println("unexpected NoSuchElementException in DeclListNode.print");
@@ -164,7 +175,7 @@ class StmtListNode extends ASTnode {
         Iterator<StmtNode> it = myStmts.iterator();
         while (it.hasNext()) {
             it.next().unparse(p, indent);
-        } 
+        }
     }
 
     // list of children (StmtNodes)
@@ -178,18 +189,19 @@ class ExpListNode extends ASTnode {
 
     public void unparse(PrintWriter p, int indent) {
         Iterator<ExpNode> it = myExps.iterator();
-        if (it.hasNext()) {         // if there is at least one element
+        if (it.hasNext()) { // if there is at least one element
             it.next().unparse(p, indent);
-            while (it.hasNext()) {  // print the rest of the list
+            while (it.hasNext()) { // print the rest of the list
                 p.print(", ");
                 it.next().unparse(p, indent);
             }
-        } 
+        }
     }
 
     // list of children (ExpNodes)
     private List<ExpNode> myExps;
 }
+
 class FormalsListNode extends ASTnode {
     public FormalsListNode(List<FormalDeclNode> S) {
         myFormals = S;
@@ -199,7 +211,7 @@ class FormalsListNode extends ASTnode {
         Iterator<FormalDeclNode> it = myFormals.iterator();
         if (it.hasNext()) { // if there is at least one element
             it.next().unparse(p, indent);
-            while (it.hasNext()) {  // print the rest of the list
+            while (it.hasNext()) { // print the rest of the list
                 p.print(", ");
                 it.next().unparse(p, indent);
             }
@@ -226,12 +238,12 @@ class FuncBodyNode extends ASTnode {
     private StmtListNode myStmtList;
 }
 
-
 // **********************************************************************
-// *****  DeclNode and its subclasses
+// ***** DeclNode and its subclasses
 // **********************************************************************
 
 abstract class DeclNode extends ASTnode {
+    abstract public Sym nameAnalysis(SymTab symTab);
 }
 
 class VarDeclNode extends DeclNode {
@@ -239,6 +251,10 @@ class VarDeclNode extends DeclNode {
         myType = type;
         myId = id;
         mySize = size;
+    }
+
+    public Sym nameAnalysis(SymTab symTab) {
+        return null;
     }
 
     public void unparse(PrintWriter p, int indent) {
@@ -252,20 +268,24 @@ class VarDeclNode extends DeclNode {
     // 3 children
     private TypeNode myType;
     private IdNode myId;
-    private int mySize;  // use value NON_STRUCT if this is not a struct type
+    private int mySize; // use value NON_STRUCT if this is not a struct type
 
     public static int NON_STRUCT = -1;
 }
 
 class FuncDeclNode extends DeclNode {
     public FuncDeclNode(TypeNode type,
-                      IdNode id,
-                      FormalsListNode formalList,
-                      FuncBodyNode body) {
+            IdNode id,
+            FormalsListNode formalList,
+            FuncBodyNode body) {
         myType = type;
         myId = id;
         myFormalsList = formalList;
         myBody = body;
+    }
+
+    public Sym nameAnalysis(SymTab symTab) {
+        return null;
     }
 
     public void unparse(PrintWriter p, int indent) {
@@ -276,7 +296,7 @@ class FuncDeclNode extends DeclNode {
         p.print("[");
         myFormalsList.unparse(p, 0);
         p.println("] [");
-        myBody.unparse(p, indent+4);
+        myBody.unparse(p, indent + 4);
         p.println("]\n");
     }
 
@@ -291,6 +311,10 @@ class FormalDeclNode extends DeclNode {
     public FormalDeclNode(TypeNode type, IdNode id) {
         myType = type;
         myId = id;
+    }
+
+    public Sym nameAnalysis(SymTab symTab) {
+        return null;
     }
 
     public void unparse(PrintWriter p, int indent) {
@@ -310,12 +334,16 @@ class StructDeclNode extends DeclNode {
         myDeclList = declList;
     }
 
+    public Sym nameAnalysis(SymTab symTab) {
+        return null;
+    }
+
     public void unparse(PrintWriter p, int indent) {
         doIndent(p, indent);
         p.print("struct ");
         myId.unparse(p, 0);
         p.println(" [");
-        myDeclList.unparse(p, indent+4);
+        myDeclList.unparse(p, indent + 4);
         doIndent(p, indent);
         p.println("]\n");
     }
@@ -326,7 +354,7 @@ class StructDeclNode extends DeclNode {
 }
 
 // **********************************************************************
-// ****  TypeNode and its subclasses
+// **** TypeNode and its subclasses
 // **********************************************************************
 
 abstract class TypeNode extends ASTnode {
@@ -368,13 +396,13 @@ class StructNode extends TypeNode {
         p.print("struct ");
         myId.unparse(p, 0);
     }
-	
-	// 1 child
+
+    // 1 child
     private IdNode myId;
 }
 
 // **********************************************************************
-// ****  StmtNode and its subclasses
+// **** StmtNode and its subclasses
 // **********************************************************************
 
 abstract class StmtNode extends ASTnode {
@@ -437,10 +465,10 @@ class IfStmtNode extends StmtNode {
         p.print("if (");
         myExp.unparse(p, 0);
         p.println(") {");
-        myDeclList.unparse(p, indent+4);
-        myStmtList.unparse(p, indent+4);
+        myDeclList.unparse(p, indent + 4);
+        myStmtList.unparse(p, indent + 4);
         doIndent(p, indent);
-        p.println("}");  
+        p.println("}");
     }
 
     // 3 children
@@ -451,8 +479,8 @@ class IfStmtNode extends StmtNode {
 
 class IfElseStmtNode extends StmtNode {
     public IfElseStmtNode(ExpNode exp, DeclListNode dlist1,
-                          StmtListNode slist1, DeclListNode dlist2,
-                          StmtListNode slist2) {
+            StmtListNode slist1, DeclListNode dlist2,
+            StmtListNode slist2) {
         myExp = exp;
         myThenDeclList = dlist1;
         myThenStmtList = slist1;
@@ -465,16 +493,16 @@ class IfElseStmtNode extends StmtNode {
         p.print("if (");
         myExp.unparse(p, 0);
         p.println(") {");
-        myThenDeclList.unparse(p, indent+4);
-        myThenStmtList.unparse(p, indent+4);
+        myThenDeclList.unparse(p, indent + 4);
+        myThenStmtList.unparse(p, indent + 4);
         doIndent(p, indent);
         p.println("}");
         doIndent(p, indent);
         p.println("else {");
-        myElseDeclList.unparse(p, indent+4);
-        myElseStmtList.unparse(p, indent+4);
+        myElseDeclList.unparse(p, indent + 4);
+        myElseStmtList.unparse(p, indent + 4);
         doIndent(p, indent);
-        p.println("}"); 
+        p.println("}");
     }
 
     // 5 children
@@ -491,14 +519,14 @@ class WhileStmtNode extends StmtNode {
         myDeclList = dlist;
         myStmtList = slist;
     }
-	
+
     public void unparse(PrintWriter p, int indent) {
         doIndent(p, indent);
         p.print("while (");
         myExp.unparse(p, 0);
         p.println(") {");
-        myDeclList.unparse(p, indent+4);
-        myStmtList.unparse(p, indent+4);
+        myDeclList.unparse(p, indent + 4);
+        myStmtList.unparse(p, indent + 4);
         doIndent(p, indent);
         p.println("}");
     }
@@ -576,7 +604,7 @@ class ReturnStmtNode extends StmtNode {
 }
 
 // **********************************************************************
-// ****  ExpNode and its subclasses
+// **** ExpNode and its subclasses
 // **********************************************************************
 
 abstract class ExpNode extends ASTnode {
@@ -619,11 +647,17 @@ class IdNode extends ExpNode {
 
     public void unparse(PrintWriter p, int indent) {
         p.print(myStrVal);
+        if (mySym != null) {
+            p.print("{");
+            p.print(mySym.toString());
+            p.print("}");
+        }
     }
 
     private int myLineNum;
     private int myCharNum;
     private String myStrVal;
+    private Sym mySym;
 }
 
 class IntLitNode extends ExpNode {
@@ -660,7 +694,7 @@ class StringLitNode extends ExpNode {
 
 class StructAccessExpNode extends ExpNode {
     public StructAccessExpNode(ExpNode loc, IdNode id) {
-        myLoc = loc;	
+        myLoc = loc;
         myId = id;
     }
 
@@ -673,7 +707,7 @@ class StructAccessExpNode extends ExpNode {
     }
 
     // 2 children
-    private ExpNode myLoc;	
+    private ExpNode myLoc;
     private IdNode myId;
 }
 
@@ -684,11 +718,13 @@ class AssignExpNode extends ExpNode {
     }
 
     public void unparse(PrintWriter p, int indent) {
-        if (indent != -1)  p.print("(");
+        if (indent != -1)
+            p.print("(");
         myLhs.unparse(p, 0);
         p.print(" = ");
         myExp.unparse(p, 0);
-        if (indent != -1)  p.print(")");   
+        if (indent != -1)
+            p.print(")");
     }
 
     // 2 children
@@ -713,12 +749,12 @@ class CallExpNode extends ExpNode {
         if (myExpList != null) {
             myExpList.unparse(p, 0);
         }
-        p.print(")");   
+        p.print(")");
     }
 
     // 2 children
     private IdNode myId;
-    private ExpListNode myExpList;  // possibly null
+    private ExpListNode myExpList; // possibly null
 }
 
 abstract class UnaryExpNode extends ExpNode {
@@ -742,7 +778,7 @@ abstract class BinaryExpNode extends ExpNode {
 }
 
 // **********************************************************************
-// ****  Subclasses of UnaryExpNode
+// **** Subclasses of UnaryExpNode
 // **********************************************************************
 
 class NotNode extends UnaryExpNode {
@@ -770,7 +806,7 @@ class UnaryMinusNode extends UnaryExpNode {
 }
 
 // **********************************************************************
-// ****  Subclasses of BinaryExpNode
+// **** Subclasses of BinaryExpNode
 // **********************************************************************
 
 class AndNode extends BinaryExpNode {
