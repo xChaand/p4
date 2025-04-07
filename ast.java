@@ -171,6 +171,12 @@ class StmtListNode extends ASTnode {
         myStmts = S;
     }
 
+    public void nameAnalysis(SymTab symTab) {
+        for (StmtNode node : myStmts) {
+            // node.nameAnalysis(symTab);
+        }
+    }
+
     public void unparse(PrintWriter p, int indent) {
         Iterator<StmtNode> it = myStmts.iterator();
         while (it.hasNext()) {
@@ -228,6 +234,11 @@ class FuncBodyNode extends ASTnode {
         myStmtList = stmtList;
     }
 
+    public void nameAnalysis(SymTab symTab) {
+        myDeclList.nameAnalysis(symTab);
+        // myStmtList.nameAnalysis(symTab);
+    }
+
     public void unparse(PrintWriter p, int indent) {
         myDeclList.unparse(p, indent);
         myStmtList.unparse(p, indent);
@@ -253,8 +264,49 @@ class VarDeclNode extends DeclNode {
         mySize = size;
     }
 
+    /**
+     * if name is declared void then ERROR
+     * 
+     * 
+     */
     public Sym nameAnalysis(SymTab symTab) {
-        return null;
+        boolean error = false;
+        String myName = myId.getName();
+        Sym mySym = null;
+
+        // Check if name is not being declared as void type
+        if (myType instanceof VoidNode) {
+            ErrMsg.fatal(myId.getLineNum(), myId.getCharNum(), "Non-function declared void");
+            error = true;
+        }
+
+        try { // Check local scope if name already exists in symtab
+            if (symTab.lookupLocal(myName) != null) {
+                ErrMsg.fatal(myId.getLineNum(), myId.getCharNum(), "Identifier multiply-declared");
+                error = true;
+            }
+        } catch (SymTabEmptyException e) {
+            // TODO: handle exception
+        }
+
+        if (!error) { // Put into hashtable (add to this scope)
+            mySym = new Sym(myType.toString());
+            myId.setLink(mySym);
+            try {
+                symTab.addDecl(myName, mySym);
+            } catch (SymDuplicateException ex) {
+                System.err.println("Unexpected DuplicateSymException " +
+                        " in VarDeclNode.nameAnalysis");
+                System.exit(-1);
+            } catch (SymTabEmptyException ex) {
+                System.err.println("Unexpected SymTabEmptyException " +
+                        " in VarDeclNode.nameAnalysis");
+                System.exit(-1);
+            }
+
+        }
+
+        return mySym;
     }
 
     public void unparse(PrintWriter p, int indent) {
@@ -367,6 +419,11 @@ class BooleanNode extends TypeNode {
     public void unparse(PrintWriter p, int indent) {
         p.print("boolean");
     }
+
+    @Override
+    public String toString() {
+        return "boolean";
+    }
 }
 
 class IntegerNode extends TypeNode {
@@ -375,6 +432,11 @@ class IntegerNode extends TypeNode {
 
     public void unparse(PrintWriter p, int indent) {
         p.print("integer");
+    }
+
+    @Override
+    public String toString() {
+        return "integer";
     }
 }
 
@@ -385,6 +447,12 @@ class VoidNode extends TypeNode {
     public void unparse(PrintWriter p, int indent) {
         p.print("void");
     }
+
+    @Override
+    public String toString() {
+        return "void";
+    }
+
 }
 
 class StructNode extends TypeNode {
@@ -395,6 +463,11 @@ class StructNode extends TypeNode {
     public void unparse(PrintWriter p, int indent) {
         p.print("struct ");
         myId.unparse(p, 0);
+    }
+
+    @Override
+    public String toString() {
+        return myId.getName();
     }
 
     // 1 child
@@ -643,6 +716,22 @@ class IdNode extends ExpNode {
         myLineNum = lineNum;
         myCharNum = charNum;
         myStrVal = strVal;
+    }
+
+    public String getName() {
+        return myStrVal;
+    }
+
+    public int getLineNum() {
+        return myLineNum;
+    }
+
+    public int getCharNum() {
+        return myCharNum;
+    }
+
+    public void setLink(Sym sym) {
+        mySym = sym;
     }
 
     public void unparse(PrintWriter p, int indent) {
